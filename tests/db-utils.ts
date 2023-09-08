@@ -2,8 +2,11 @@ import fs from 'node:fs'
 import { faker } from '@faker-js/faker'
 import bcrypt from 'bcryptjs'
 import { UniqueEnforcer } from 'enforce-unique'
+import { TenantUserJoined } from '#app/application/enums/core/tenants/TenantUserJoined.ts'
+import { TenantUserStatus } from '#app/application/enums/core/tenants/TenantUserStatus.ts'
 import { getPasswordHash } from '#app/utils/auth.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
+
 
 const uniqueUsernameEnforcer = new UniqueEnforcer()
 
@@ -139,4 +142,47 @@ export async function img({
 		contentType: filepath.endsWith('.png') ? 'image/png' : 'image/jpeg',
 		blob: await fs.promises.readFile(filepath),
 	}
+}
+
+export async function createTenant(name: string, workspaces: string[], users: (User & { role: Role })[]) {
+	const tenant = await prisma.tenant.create({
+		data: {
+			name,
+		},
+	});
+
+	users.forEach(async (user) => {
+		await prisma.tenantUser.create({
+			data: {
+				tenantId: tenant.id,
+				userId: user.id,
+				roleId: user.role.id,
+				joined: TenantUserJoined.CREATOR,
+				status: TenantUserStatus.ACTIVE,
+			},
+		});
+	});
+
+	workspaces.forEach(async (name) => {
+		const workspace = await prisma.workspace.create({
+			data: {
+				tenantId: tenant.id,
+				name,
+				type: 0,
+				businessMainActivity: "",
+				registrationNumber: "",
+			},
+		});
+
+		users.forEach(async (user) => {
+			await prisma.workspaceUser.create({
+				data: {
+					workspaceId: workspace.id,
+					userId: user.id,
+				},
+			});
+		});
+	});
+
+	return tenant;
 }

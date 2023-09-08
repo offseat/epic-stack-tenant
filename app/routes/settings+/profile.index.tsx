@@ -154,6 +154,11 @@ export default function EditUserProfile() {
 					</Link>
 				</div>
 				<div>
+					<Link to="tenants">
+						<Icon name="link-3">Tenants</Icon>
+					</Link>
+				</div>
+				<div>
 					<Link
 						reloadDocument
 						download="my-epic-notes-data.json"

@@ -15,6 +15,8 @@ model User {
   email    String  @unique
   username String  @unique
   name     String?
+  firstname String?
+  surname   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -25,6 +27,12 @@ model User {
   roles       Role[]
   sessions    Session[]
   connections Connection[]
+
+  defaultWorkspaceId String?
+  tenants         TenantUser[]
+  workspaces      WorkspaceUser[]
+  invitation      TenantUserInvitation?
+  createdMembers  Member[]
 }
 
 model Note {
@@ -121,6 +129,9 @@ model Role {
 
   users       User[]
   permissions Permission[]
+
+  tenantUsers TenantUser[]
+  tenantUserInvitation TenantUserInvitation[]
 }
 
 model Verification {
@@ -164,4 +175,86 @@ model Connection {
 
   @@unique([providerName, providerId])
   @@unique([providerId, userId])
+}
+
+model Tenant {
+  id                     String                 @id @default(uuid())
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  name                   String
+  users                  TenantUser[]
+  workspaces             Workspace[]
+  invitations            TenantUserInvitation[]
+  members                Member[]
+}
+
+model TenantUser {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId String
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  joined   Int
+  status   Int
+}
+
+model TenantUserInvitation {
+  id            String                          @id @default(uuid())
+  tenantId      String
+  tenant        Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email         String
+  firstName     String
+  lastName      String
+  roleId String
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  pending       Boolean
+  workspaces    TenantUserInvitationWorkspace[]
+  createdUserId String?                         @unique
+  user          User?                           @relation(fields: [createdUserId], references: [id], onDelete: Cascade)
+}
+
+model TenantUserInvitationWorkspace {
+  id           String               @id @default(uuid())
+  invitationId String
+  invitation   TenantUserInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  workspaceId  String
+}
+
+model Workspace {
+  id                   String          @id @default(uuid())
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  tenantId             String
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                 String
+  type                 Int
+  businessMainActivity String
+  registrationNumber   String
+  registrationDate     DateTime?
+  users                WorkspaceUser[]
+  members              Member[]
+}
+
+model WorkspaceUser {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Member {
+  id               String             @id @default(uuid())
+  createdAt        DateTime           @default(now())
+  createdByUserId  String
+  createdByUser    User               @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  tenantId         String
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspaceId      String
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  email            String
 }
